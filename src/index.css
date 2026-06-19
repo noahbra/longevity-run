@@ -1,0 +1,32 @@
+@import 'tailwindcss';
+
+/* Calm, flat, high-contrast. No gradients. */
+@theme {
+  --color-ink: #1a1a1a;
+  --color-paper: #fafaf9;
+  --color-card: #ffffff;
+  --color-line: #e7e5e4;
+  --color-muted: #78716c;
+  --color-go: #166534;
+  --color-go-soft: #f0fdf4;
+  --color-hold: #92400e;
+  --color-hold-soft: #fffbeb;
+  --color-stop: #991b1b;
+  --color-stop-soft: #fef2f2;
+  --color-accent: #1c3d5a;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family:
+    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
