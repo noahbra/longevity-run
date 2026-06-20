@@ -3,7 +3,7 @@ import { useStore } from '../store';
 import { lifestyleMeta, supplementMeta } from '../engine/reference';
 import type { DailyLog, LifestyleKey, SupplementKey } from '../types';
 import { LIFESTYLE_KEYS, SUPPLEMENT_KEYS, defaultDailyLog, upsertDailyLog } from '../lib/appActions';
-import { Card, CardTitle, ScreenTitle } from '../components/ui';
+import { Card, CardTitle, DateNav, ScreenTitle } from '../components/ui';
 
 function last7(today: string): string[] {
   const out: string[] = [];
@@ -18,10 +18,10 @@ function last7(today: string): string[] {
 }
 
 export default function Habits() {
-  const { data, today, update } = useStore();
+  const { data, today, selectedDate, setSelectedDate, update } = useStore();
   const log = useMemo(
-    () => data.dailyLogs.find((l) => l.date === today) ?? defaultDailyLog(today),
-    [data.dailyLogs, today],
+    () => data.dailyLogs.find((l) => l.date === selectedDate) ?? defaultDailyLog(selectedDate),
+    [data.dailyLogs, selectedDate],
   );
   const days = useMemo(() => last7(today), [today]);
   const logsByDate = useMemo(() => {
@@ -32,7 +32,7 @@ export default function Habits() {
 
   const patch = (p: Partial<DailyLog>) =>
     update((d) => {
-      const base = d.dailyLogs.find((l) => l.date === today) ?? defaultDailyLog(today);
+      const base = d.dailyLogs.find((l) => l.date === selectedDate) ?? defaultDailyLog(selectedDate);
       return upsertDailyLog(d, { ...base, ...p });
     });
 
@@ -54,6 +54,7 @@ export default function Habits() {
   return (
     <div className="space-y-4">
       <ScreenTitle title="Habits" subtitle="Daily adherence · last 7 days" />
+      <DateNav date={selectedDate} today={today} onChange={setSelectedDate} />
 
       <Card>
         <CardTitle>Supplements &amp; meds</CardTitle>

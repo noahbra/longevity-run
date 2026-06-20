@@ -1,4 +1,46 @@
 import type { ReactNode } from 'react';
+import { addDays, shortDate } from '../lib/date';
+
+// Step the active day backward/forward for backfilling missed entries.
+// Capped at `today` — you can't log the future.
+export function DateNav({
+  date,
+  today,
+  onChange,
+}: {
+  date: string;
+  today: string;
+  onChange: (d: string) => void;
+}) {
+  const isToday = date === today;
+  return (
+    <div className="mb-4 flex items-center justify-between rounded-xl border border-line bg-paper px-1 py-1">
+      <button
+        onClick={() => onChange(addDays(date, -1))}
+        className="rounded-lg px-4 py-1.5 text-lg text-muted hover:text-ink"
+        aria-label="Previous day"
+      >
+        ‹
+      </button>
+      <div className="text-center leading-tight">
+        <div className="text-sm font-semibold text-ink">{isToday ? 'Today' : shortDate(date)}</div>
+        {!isToday && (
+          <button onClick={() => onChange(today)} className="text-xs text-accent">
+            back to today
+          </button>
+        )}
+      </div>
+      <button
+        onClick={() => onChange(addDays(date, 1))}
+        disabled={isToday}
+        className={`rounded-lg px-4 py-1.5 text-lg ${isToday ? 'text-line' : 'text-muted hover:text-ink'}`}
+        aria-label="Next day"
+      >
+        ›
+      </button>
+    </div>
+  );
+}
 
 export function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
   return (

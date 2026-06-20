@@ -3,7 +3,7 @@ import { useStore } from '../store';
 import type { BPReading, DailyLog } from '../types';
 import { daysBetween } from '../lib/date';
 import { defaultDailyLog, endBPBlock, startBPBlock, upsertDailyLog } from '../lib/appActions';
-import { Button, Card, CardTitle, ScreenTitle, Stat } from '../components/ui';
+import { Button, Card, CardTitle, DateNav, ScreenTitle, Stat } from '../components/ui';
 
 const SLOTS: { slot: BPReading['slot']; label: string }[] = [
   { slot: 'am1', label: 'AM 1' },
@@ -18,15 +18,15 @@ function avg(nums: number[]): number | null {
 }
 
 export default function Measure() {
-  const { data, today, update } = useStore();
+  const { data, today, selectedDate, setSelectedDate, update } = useStore();
   const log = useMemo(
-    () => data.dailyLogs.find((l) => l.date === today) ?? defaultDailyLog(today),
-    [data.dailyLogs, today],
+    () => data.dailyLogs.find((l) => l.date === selectedDate) ?? defaultDailyLog(selectedDate),
+    [data.dailyLogs, selectedDate],
   );
 
   const patch = (p: Partial<DailyLog>) =>
     update((d) => {
-      const base = d.dailyLogs.find((l) => l.date === today) ?? defaultDailyLog(today);
+      const base = d.dailyLogs.find((l) => l.date === selectedDate) ?? defaultDailyLog(selectedDate);
       return upsertDailyLog(d, { ...base, ...p });
     });
 
@@ -79,6 +79,7 @@ export default function Measure() {
   return (
     <div className="space-y-4">
       <ScreenTitle title="Measure" subtitle="The numbers" />
+      <DateNav date={selectedDate} today={today} onChange={setSelectedDate} />
 
       <Card>
         <CardTitle>Daily</CardTitle>

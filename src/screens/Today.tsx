@@ -3,10 +3,10 @@ import { useStore } from '../store';
 import { selectToday, rebuildTrends } from '../engine';
 import { directiveLine, SESSION_LABELS, sorenessReminder, themeDinners } from '../engine/reference';
 import type { BackTrend, DailyLog, Quality, RecoveryInputs, Trend } from '../types';
-import { dayName, daysBetween, prettyDate } from '../lib/date';
+import { dayName, daysBetween, prettyDate, shortDate } from '../lib/date';
 import { defaultDailyLog, upsertDailyLog } from '../lib/appActions';
 import type { Tab } from '../App';
-import { Card, CardTitle, Field, ScreenTitle, Segmented } from '../components/ui';
+import { Card, CardTitle, DateNav, Field, ScreenTitle, Segmented } from '../components/ui';
 
 function recoveryFromLog(log: DailyLog): RecoveryInputs {
   return {
@@ -20,18 +20,19 @@ function recoveryFromLog(log: DailyLog): RecoveryInputs {
 }
 
 export default function Today({ onNavigate }: { onNavigate: (t: Tab) => void }) {
-  const { data, today, update } = useStore();
+  const { data, today, selectedDate, setSelectedDate, update } = useStore();
+  const isToday = selectedDate === today;
   const log = useMemo(
-    () => data.dailyLogs.find((l) => l.date === today) ?? defaultDailyLog(today),
-    [data.dailyLogs, today],
+    () => data.dailyLogs.find((l) => l.date === selectedDate) ?? defaultDailyLog(selectedDate),
+    [data.dailyLogs, selectedDate],
   );
-  const stateForToday = useMemo(
-    () => ({ ...data.state, trends: rebuildTrends(data.dailyLogs.filter((l) => l.date < today)) }),
-    [data.state, data.dailyLogs, today],
+  const stateForDay = useMemo(
+    () => ({ ...data.state, trends: rebuildTrends(data.dailyLogs.filter((l) => l.date < selectedDate)) }),
+    [data.state, data.dailyLogs, selectedDate],
   );
   const result = useMemo(
-    () => selectToday(stateForToday, recoveryFromLog(log), today),
-    [stateForToday, log, today],
+    () => selectToday(stateForDay, recoveryFromLog(log), selectedDate),
+    [stateForDay, log, selectedDate],
   );
 
   const patch = (p: Partial<DailyLog>) => update((d) => upsertDailyLog(d, { ...log, ...p }));
@@ -61,9 +62,16 @@ export default function Today({ onNavigate }: { onNavigate: (t: Tab) => void }) 
 
   return (
     <div className="space-y-4">
-      <ScreenTitle title="Today" subtitle={`${dayName(today)} · ${prettyDate(today)}`} />
+      <ScreenTitle title="Today" subtitle={`${dayName(selectedDate)} · ${prettyDate(selectedDate)}`} />
+      <DateNav date={selectedDate} today={today} onChange={setSelectedDate} />
 
-      {due.length > 0 && (
+      {!isToday && (
+        <p className="rounded-xl border border-accent/30 bg-accent/5 p-3 text-sm text-ink">
+          Backfilling {shortDate(selectedDate)} — fill in the check-in you missed.
+        </p>
+      )}
+
+      {isToday && due.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {due.map((d) => (
             <span key={d} className="rounded-full bg-hold-soft px-3 py-1 text-xs font-medium text-hold">
@@ -81,6 +89,7 @@ export default function Today({ onNavigate }: { onNavigate: (t: Tab) => void }) 
         notes={result.resolved.notes}
       />
 
+      {isToday && (
       <Card>
         <CardTitle>Today's plan</CardTitle>
         <button
@@ -104,7 +113,9 @@ export default function Today({ onNavigate }: { onNavigate: (t: Tab) => void }) 
           <span className="text-sm text-accent">Open →</span>
         </button>
       </Card>
+      )}
 
+      {isToday && (
       <Card>
         <CardTitle>What's left today</CardTitle>
         <div className="grid grid-cols-4 gap-2">
@@ -122,6 +133,7 @@ export default function Today({ onNavigate }: { onNavigate: (t: Tab) => void }) 
           ))}
         </div>
       </Card>
+      )}
     </div>
   );
 }

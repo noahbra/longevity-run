@@ -11,19 +11,19 @@ import {
 import type { DailyLog, DietRating, MealKey, MealStatus } from '../types';
 import { dayName } from '../lib/date';
 import { MEAL_KEYS, defaultDailyLog, deriveDiet, upsertDailyLog } from '../lib/appActions';
-import { Card, CardTitle, ScreenTitle, Segmented } from '../components/ui';
+import { Card, CardTitle, DateNav, ScreenTitle, Segmented } from '../components/ui';
 
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const prevWeekday = (name: string) => WEEKDAYS[(WEEKDAYS.indexOf(name) + 6) % 7];
 
 export default function Eat() {
-  const { data, today, update } = useStore();
+  const { data, today, selectedDate, setSelectedDate, update } = useStore();
   const log = useMemo(
-    () => data.dailyLogs.find((l) => l.date === today) ?? defaultDailyLog(today),
-    [data.dailyLogs, today],
+    () => data.dailyLogs.find((l) => l.date === selectedDate) ?? defaultDailyLog(selectedDate),
+    [data.dailyLogs, selectedDate],
   );
 
-  const wd = dayName(today);
+  const wd = dayName(selectedDate);
   const dishes: Record<MealKey, string> = {
     breakfast: defaultBreakfast,
     lunch: `${themeDinners[prevWeekday(wd)]} (leftovers)`,
@@ -35,7 +35,7 @@ export default function Eat() {
   // Any change to meals/levers re-derives the 9-key pattern so the Week score holds.
   const patchEat = (p: Partial<DailyLog>) =>
     update((d) => {
-      const base = d.dailyLogs.find((l) => l.date === today) ?? defaultDailyLog(today);
+      const base = d.dailyLogs.find((l) => l.date === selectedDate) ?? defaultDailyLog(selectedDate);
       const merged: DailyLog = { ...base, ...p, diet: { ...base.diet, ...(p.diet ?? {}) } };
       merged.diet = deriveDiet(merged);
       return upsertDailyLog(d, merged);
@@ -49,9 +49,10 @@ export default function Eat() {
   return (
     <div className="space-y-4">
       <ScreenTitle title="Eat" subtitle={`${wd}'s menu`} />
+      <DateNav date={selectedDate} today={today} onChange={setSelectedDate} />
 
       <Card>
-        <CardTitle>Today's menu — check what you ate</CardTitle>
+        <CardTitle>Menu — check what you ate</CardTitle>
         <div className="space-y-3">
           {MEAL_KEYS.map((k) => (
             <div key={k} className="rounded-xl border border-line p-3">

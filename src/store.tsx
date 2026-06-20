@@ -20,6 +20,8 @@ function loadReconciled(today: string): AppData {
 interface StoreValue {
   data: AppData;
   today: string;
+  selectedDate: string; // the day the daily-input tabs read/write (defaults to today; lets you backfill)
+  setSelectedDate: (d: string) => void;
   update: (fn: (draft: AppData) => AppData) => void;
   reset: () => void;
   importData: (json: string) => void;
@@ -30,6 +32,7 @@ const StoreContext = createContext<StoreValue | null>(null);
 export function StoreProvider({ children }: { children: ReactNode }) {
   const today = useMemo(() => todayISO(), []);
   const [data, setData] = useState<AppData>(() => loadReconciled(today));
+  const [selectedDate, setSelectedDate] = useState<string>(today);
 
   useEffect(() => {
     saveAppData(data);
@@ -50,8 +53,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo<StoreValue>(
-    () => ({ data, today, update, reset, importData }),
-    [data, today, update, reset, importData],
+    () => ({ data, today, selectedDate, setSelectedDate, update, reset, importData }),
+    [data, today, selectedDate, update, reset, importData],
   );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

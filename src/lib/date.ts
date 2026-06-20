@@ -26,6 +26,19 @@ export function prettyDate(iso: string): string {
   return date.toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' });
 }
 
+// Shift an ISO date by n days (local).
+export function addDays(iso: string, n: number): string {
+  const [y, m, d] = iso.split('-').map(Number);
+  return toISO(new Date(y, m - 1, d + n));
+}
+
+// Compact label, e.g. "Mon, Jun 16".
+export function shortDate(iso: string): string {
+  const [y, m, d] = iso.split('-').map(Number);
+  const date = new Date(y, m - 1, d);
+  return date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+}
+
 // Whole calendar days from `from` to `to` (to - from). Negative if to < from.
 export function daysBetween(fromISO: string, toISO: string): number {
   const [fy, fm, fd] = fromISO.split('-').map(Number);
