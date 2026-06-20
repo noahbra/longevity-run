@@ -1,16 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useStore } from '../store';
-import { labsToOrder } from '../engine/reference';
 import type { BPReading, DailyLog } from '../types';
 import { daysBetween } from '../lib/date';
-import {
-  addLab,
-  defaultDailyLog,
-  endBPBlock,
-  removeLab,
-  startBPBlock,
-  upsertDailyLog,
-} from '../lib/appActions';
+import { defaultDailyLog, endBPBlock, startBPBlock, upsertDailyLog } from '../lib/appActions';
 import { Button, Card, CardTitle, ScreenTitle, Stat } from '../components/ui';
 
 const SLOTS: { slot: BPReading['slot']; label: string }[] = [
@@ -170,83 +162,12 @@ export default function Measure() {
         )}
       </Card>
 
-      <LabsCard />
-
       <p className="px-1 text-xs text-muted">
-        This app records measurements. It never interprets labs or BP, diagnoses, or changes
-        medication. Those are conversations with your physician.
+        This app records measurements. It never interprets BP, diagnoses, or changes medication.
+        Those are conversations with your physician. See the Labs tab for your history and schedule.
       </p>
     </div>
   );
-}
-
-function LabsCard() {
-  const { data, update } = useStore();
-  const [name, setName] = useState('');
-  const [value, setValue] = useState('');
-  const labs = data.labs ?? [];
-
-  const add = () => {
-    if (!name.trim()) return;
-    update((d) => addLab(d, { date: dateForLab(), name: name.trim(), value: value.trim() || undefined }));
-    setName('');
-    setValue('');
-  };
-
-  return (
-    <Card>
-      <CardTitle>Labs</CardTitle>
-      {labs.length > 0 && (
-        <ul className="mb-3 space-y-1">
-          {labs.map((l, i) => (
-            <li key={i} className="flex items-center justify-between text-sm">
-              <span className="text-ink">
-                {l.name}
-                {l.value ? <span className="text-muted"> — {l.value}</span> : null}
-                <span className="ml-1 text-xs text-muted">({l.date})</span>
-              </span>
-              <button onClick={() => update((d) => removeLab(d, i))} className="text-xs text-muted hover:text-stop">
-                remove
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-      <div className="flex gap-2">
-        <input
-          type="text"
-          placeholder="Lab name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="min-w-0 flex-1 rounded-lg border border-line bg-paper px-2 py-1.5 text-sm text-ink"
-        />
-        <input
-          type="text"
-          placeholder="Value"
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          className="w-24 min-w-0 rounded-lg border border-line bg-paper px-2 py-1.5 text-sm text-ink"
-        />
-        <Button variant="subtle" onClick={add}>
-          Add
-        </Button>
-      </div>
-      <div className="mt-3 border-t border-line pt-3">
-        <p className="mb-1 text-xs font-medium text-muted">To order (per your plan)</p>
-        <ul className="space-y-0.5 text-xs text-muted">
-          {labsToOrder.map((l) => (
-            <li key={l}>• {l}</li>
-          ))}
-        </ul>
-      </div>
-    </Card>
-  );
-}
-
-// Labs are recorded against the day they're entered.
-function dateForLab(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 function NumberField({

@@ -5,13 +5,14 @@ import Eat from './screens/Eat';
 import Measure from './screens/Measure';
 import Habits from './screens/Habits';
 import Week from './screens/Week';
+import Labs from './screens/Labs';
 import Plan from './screens/Plan';
 import Log from './screens/Log';
 import Settings from './screens/Settings';
 
-export type Tab = 'Today' | 'Train' | 'Eat' | 'Measure' | 'Habits' | 'Week' | 'Plan' | 'Log' | 'Settings';
+export type Tab = 'Today' | 'Train' | 'Eat' | 'Measure' | 'Habits' | 'Week' | 'Labs' | 'Plan' | 'Log' | 'Settings';
 const PRIMARY: Tab[] = ['Today', 'Train', 'Eat', 'Measure', 'Habits', 'Week'];
-const SECONDARY: Tab[] = ['Plan', 'Log', 'Settings'];
+const SECONDARY: Tab[] = ['Labs', 'Plan', 'Log', 'Settings'];
 
 export default function App() {
   const [tab, setTab] = useState<Tab>('Today');
@@ -31,6 +32,7 @@ export default function App() {
         {tab === 'Measure' && <Measure />}
         {tab === 'Habits' && <Habits />}
         {tab === 'Week' && <Week />}
+        {tab === 'Labs' && <Labs />}
         {tab === 'Plan' && <Plan />}
         {tab === 'Log' && <Log />}
         {tab === 'Settings' && <Settings />}

@@ -205,15 +205,44 @@ export const lifestyleMeta: Record<string, string> = {
   dental: 'Dental (brush 2× · floss)',
 };
 
-// ── Measure tab: labs the doc wants ordered (reminder list, never interpreted) ─
-export const labsToOrder = [
-  'LDL / ApoB (follow-up 8–12 wk)',
-  'Lp(a) — once',
-  'Baseline CK',
-  'Ferritin / iron',
-  'Vitamin B12',
-  'Folate',
-  'tTG-IgA (while eating gluten)',
-  'Kidney / creatinine (before creatine loading)',
-  'Thyroid TSH + free T4 (6–12 mo)',
+// ── Labs reference (read-only; the app never interprets values) ───────────────
+// Pre-filled from the plan so nothing has to be hand-entered.
+export interface PriorLab {
+  name: string;
+  value: string;
+  note?: string;
+}
+export const priorLabs: PriorLab[] = [
+  { name: 'LDL cholesterol', value: '≥190 mg/dL', note: 'Persistently high — statin indication' },
+  { name: 'ApoB', value: '139 mg/dL', note: 'High; secondary target, kept concordant with LDL goal' },
+  { name: 'Thyroid (TSH)', value: '8.1 → 6.88 → 4.1', note: 'Normalized over time; free T4 normal' },
+  { name: 'TPO antibodies', value: '401', note: 'Positive — Hashimoto surveillance; no need to repeat' },
+  { name: 'Testosterone (total)', value: '382 ng/dL', note: 'Free 47, SHBG 37 — above replacement threshold' },
+  { name: 'A1c / glucose', value: '5.3–5.4% / 84–96', note: 'Normal' },
+  { name: 'Potassium', value: '5.0', note: 'High-normal — re-draw clean to rule out pseudohyperkalemia' },
+  { name: 'Bicarbonate', value: '33 (ref 20–32)', note: 'Slightly high — trend on next CMP' },
+  { name: 'Vitamin D', value: '34 ng/mL', note: 'Adequate — maintenance only' },
+  { name: 'Selenium', value: '209', note: 'Replete — do not supplement' },
+];
+
+export interface UpcomingLab {
+  name: string;
+  when: string;
+  why?: string;
+  group: 'now' | 'recurring';
+}
+export const upcomingLabs: UpcomingLab[] = [
+  { name: 'LDL / ApoB follow-up', when: '6–8 weeks after statin start', why: 'Confirm ≥50% LDL drop and under goal', group: 'now' },
+  { name: 'Lp(a)', when: 'Once — anytime', why: 'Measure once in adulthood; tightens goal if high', group: 'now' },
+  { name: 'Baseline CK', when: 'Now', why: 'Statin muscle-symptom reference', group: 'now' },
+  { name: 'Kidney / creatinine', when: 'Now — before creatine loading', why: 'Creatine raises it artifactually', group: 'now' },
+  { name: 'Ferritin / iron studies', when: 'Now', why: 'Fatigue + hair workup', group: 'now' },
+  { name: 'Vitamin B12', when: 'Now', group: 'now' },
+  { name: 'Folate', when: 'Now', group: 'now' },
+  { name: 'Zinc', when: 'Now', group: 'now' },
+  { name: 'tTG-IgA', when: 'Now — while still eating gluten', why: 'Celiac screen; do not go gluten-free first', group: 'now' },
+  { name: 'Potassium re-draw (clean)', when: 'Next blood draw', why: 'Rule out pseudohyperkalemia', group: 'now' },
+  { name: 'Colorectal screening', when: 'Overdue at 50 — schedule now', why: 'Recommended from age 45', group: 'now' },
+  { name: 'Lipid panel recheck', when: 'Every 8–12 weeks while titrating', why: 'Statin needs that long to read', group: 'recurring' },
+  { name: 'Thyroid TSH + free T4', when: 'Every 6–12 months', why: 'Hashimoto surveillance', group: 'recurring' },
 ];
