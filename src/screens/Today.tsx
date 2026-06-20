@@ -1,35 +1,12 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useStore } from '../store';
-import {
-  selectToday,
-  rebuildTrends,
-  dietScore,
-  nextLoad,
-  zone2WeeklyText,
-  impactUnlocked,
-} from '../engine';
-import {
-  directiveLine,
-  dietCopy,
-  dietLabels,
-  optionalBlockPrescription,
-  SESSION_LABELS,
-  sorenessReminder,
-} from '../engine/reference';
-import type {
-  BackTrend,
-  DailyLog,
-  DietKey,
-  Quality,
-  RecoveryInputs,
-  SetEntry,
-  Trend,
-  TodayExercise,
-  WorkoutLog,
-} from '../types';
-import { dayName, prettyDate } from '../lib/date';
-import { DIET_KEYS, defaultDailyLog, logCardioSession, logWorkout, upsertDailyLog } from '../lib/appActions';
-import { Button, Card, CardTitle, Field, ScreenTitle, Segmented } from '../components/ui';
+import { selectToday, rebuildTrends } from '../engine';
+import { directiveLine, SESSION_LABELS, sorenessReminder, themeDinners } from '../engine/reference';
+import type { BackTrend, DailyLog, Quality, RecoveryInputs, Trend } from '../types';
+import { dayName, daysBetween, prettyDate } from '../lib/date';
+import { defaultDailyLog, upsertDailyLog } from '../lib/appActions';
+import type { Tab } from '../App';
+import { Card, CardTitle, Field, ScreenTitle, Segmented } from '../components/ui';
 
 function recoveryFromLog(log: DailyLog): RecoveryInputs {
   return {
@@ -42,14 +19,12 @@ function recoveryFromLog(log: DailyLog): RecoveryInputs {
   };
 }
 
-export default function Today() {
+export default function Today({ onNavigate }: { onNavigate: (t: Tab) => void }) {
   const { data, today, update } = useStore();
   const log = useMemo(
     () => data.dailyLogs.find((l) => l.date === today) ?? defaultDailyLog(today),
     [data.dailyLogs, today],
   );
-
-  // Governors read PRIOR nights; today's inputs are passed live (avoid double-count).
   const stateForToday = useMemo(
     () => ({ ...data.state, trends: rebuildTrends(data.dailyLogs.filter((l) => l.date < today)) }),
     [data.state, data.dailyLogs, today],
@@ -59,77 +34,104 @@ export default function Today() {
     [stateForToday, log, today],
   );
 
-  const patchLog = (patch: Partial<DailyLog>) =>
-    update((d) => upsertDailyLog(d, { ...log, ...patch }));
+  const patch = (p: Partial<DailyLog>) => update((d) => upsertDailyLog(d, { ...log, ...p }));
 
-  // Once today's session is logged, the schedule pointer has advanced; show a
-  // calm "done for today" state instead of flipping to the next session.
-  const todaysWorkouts = data.workouts.filter((w) => w.date === today);
-  const loggedToday = todaysWorkouts.length > 0;
-
-  const badge = loggedToday
-    ? 'Done today'
-    : result.inDeload
-      ? 'Deload'
-      : SESSION_LABELS[result.plan.sessionType];
+  const loggedToday = data.workouts.some((w) => w.date === today);
+  const sessionLabel = result.inDeload ? 'Deload' : SESSION_LABELS[result.plan.sessionType];
   const modified = !loggedToday && result.plan.directive !== 'RUN_PLAN';
+
+  // "What's undone today"
+  const eatLogged = !!log.dietRating || !!(log.meals && Object.keys(log.meals).length);
+  const statinTaken = !!log.supplements?.statin;
+  const measuresLogged = log.steps != null || log.bodyweight != null || !!(log.bp && log.bp.length);
+  const status: { label: string; done: boolean; tab: Tab }[] = [
+    { label: 'Train', done: loggedToday, tab: 'Train' },
+    { label: 'Eat', done: eatLogged, tab: 'Eat' },
+    { label: 'Statin', done: statinTaken, tab: 'Habits' },
+    { label: 'Measure', done: measuresLogged, tab: 'Measure' },
+  ];
+
+  // Due-now strip
+  const waistDue = !data.dailyLogs.some((l) => (l.waist ?? 0) > 0 && daysBetween(l.date, today) < 7);
+  const due: string[] = [];
+  if (data.bpBlockStart && daysBetween(data.bpBlockStart, today) + 1 <= 7)
+    due.push(`BP block: day ${daysBetween(data.bpBlockStart, today) + 1} of 7`);
+  if (!statinTaken) due.push('Statin tonight');
+  if (waistDue) due.push('Waist due this week');
 
   return (
     <div className="space-y-4">
       <ScreenTitle title="Today" subtitle={`${dayName(today)} · ${prettyDate(today)}`} />
 
-      <div className="flex items-center gap-2">
-        <span className="rounded-full bg-accent px-3 py-1 text-sm font-medium text-white">{badge}</span>
-        {modified && (
-          <span className="rounded-full bg-hold-soft px-3 py-1 text-sm font-medium text-hold">Modified</span>
-        )}
-      </div>
+      {due.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {due.map((d) => (
+            <span key={d} className="rounded-full bg-hold-soft px-3 py-1 text-xs font-medium text-hold">
+              {d}
+            </span>
+          ))}
+        </div>
+      )}
 
-      <RecoveryCard
+      <CheckinCard
         log={log}
-        patch={patchLog}
+        patch={patch}
         directiveLineText={directiveLine[result.plan.directive]}
         directive={result.plan.directive}
         notes={result.resolved.notes}
       />
 
-      {loggedToday ? (
-        <DoneCard
-          done={todaysWorkouts.map((w) => SESSION_LABELS[w.sessionType])}
-          next={result.inDeload ? 'Deload continues' : SESSION_LABELS[result.plan.sessionType]}
-        />
-      ) : (
-        <SessionCard result={result} data={data} update={update} today={today} />
-      )}
+      <Card>
+        <CardTitle>Today's plan</CardTitle>
+        <button
+          onClick={() => onNavigate('Train')}
+          className="flex w-full items-center justify-between rounded-xl border border-line bg-paper p-3 text-left"
+        >
+          <span>
+            <span className="font-medium text-ink">{loggedToday ? 'Session done' : sessionLabel}</span>
+            {modified && <span className="ml-2 text-xs text-hold">modified</span>}
+          </span>
+          <span className="text-sm text-accent">{loggedToday ? 'View' : 'Open →'}</span>
+        </button>
+        <button
+          onClick={() => onNavigate('Eat')}
+          className="mt-2 flex w-full items-center justify-between rounded-xl border border-line bg-paper p-3 text-left"
+        >
+          <span>
+            <span className="text-xs text-muted">Dinner</span>
+            <span className="ml-2 font-medium text-ink">{themeDinners[dayName(today)]?.split(' · ')[0]}</span>
+          </span>
+          <span className="text-sm text-accent">Open →</span>
+        </button>
+      </Card>
 
-      <DietCard log={log} patch={patchLog} />
-
-      <div className="grid grid-cols-2 gap-3">
-        <StepsCard
-          log={log}
-          patch={patchLog}
-          stepBaseline={data.state.stepBaseline}
-          weekAvg={weeklyStepAverage(data.dailyLogs, today)}
-        />
-        <SleepCard log={log} patch={patchLog} />
-      </div>
-
-      {!impactUnlocked(data.state) && (
-        <p className="px-1 text-xs text-muted">
-          Impact work (running / hills / jump-rope) stays locked until next-morning Achilles is
-          same-or-better for 4–6 weeks. Bike is the default.
-        </p>
-      )}
+      <Card>
+        <CardTitle>What's left today</CardTitle>
+        <div className="grid grid-cols-4 gap-2">
+          {status.map((s) => (
+            <button
+              key={s.label}
+              onClick={() => onNavigate(s.tab)}
+              className={`rounded-xl border p-2 text-center text-xs font-medium ${
+                s.done ? 'border-go/40 bg-go-soft text-go' : 'border-line bg-paper text-muted'
+              }`}
+            >
+              <div className="text-base">{s.done ? '✓' : '○'}</div>
+              {s.label}
+            </button>
+          ))}
+        </div>
+      </Card>
     </div>
   );
 }
 
-// ── Recovery (fill first) ─────────────────────────────────────────────────────
+// ── Morning check-in — the one log that decides the day ───────────────────────
 const trendTone = (v: Trend | BackTrend) =>
   v === 'better' || v === 'same' ? 'go' : v === 'worse' || v === 'tight' ? 'hold' : 'stop';
 const qualityTone = (v: Quality) => (v === 'good' ? 'go' : v === 'okay' ? 'hold' : 'stop');
 
-function RecoveryCard({
+function CheckinCard({
   log,
   patch,
   directiveLineText,
@@ -150,19 +152,30 @@ function RecoveryCard({
         : 'border-hold/40 bg-hold-soft text-hold';
   return (
     <Card>
-      <CardTitle>Recovery — fill first</CardTitle>
+      <CardTitle>Morning check-in — fill first</CardTitle>
       <div className="divide-y divide-line">
         <Field label="Sleep">
-          <Segmented
-            value={log.sleepQuality ?? 'good'}
-            tone={(v) => qualityTone(v as Quality)}
-            onChange={(v) => patch({ sleepQuality: v as Quality })}
-            options={[
-              { value: 'good', label: 'Good' },
-              { value: 'okay', label: 'Okay' },
-              { value: 'poor', label: 'Poor' },
-            ]}
-          />
+          <div className="flex items-center gap-3">
+            <input
+              type="number"
+              inputMode="decimal"
+              step="0.5"
+              placeholder="hrs"
+              value={log.sleepHours ?? ''}
+              onChange={(e) => patch({ sleepHours: e.target.value === '' ? undefined : Number(e.target.value) })}
+              className="w-16 min-w-0 rounded-lg border border-line bg-paper px-2 py-1.5 text-sm text-ink"
+            />
+            <Segmented
+              value={log.sleepQuality ?? 'good'}
+              tone={(v) => qualityTone(v as Quality)}
+              onChange={(v) => patch({ sleepQuality: v as Quality })}
+              options={[
+                { value: 'good', label: 'Good' },
+                { value: 'okay', label: 'Okay' },
+                { value: 'poor', label: 'Poor' },
+              ]}
+            />
+          </div>
         </Field>
         <Field label="Achilles">
           <Segmented
@@ -228,288 +241,6 @@ function RecoveryCard({
       {log.diffuseSoreness === 'up' && (
         <p className="mt-2 rounded-xl border border-line bg-paper p-3 text-xs text-muted">{sorenessReminder}</p>
       )}
-    </Card>
-  );
-}
-
-function DoneCard({ done, next }: { done: string[]; next: string }) {
-  return (
-    <Card>
-      <CardTitle>Done for today</CardTitle>
-      <p className="text-sm text-go">Logged: {done.join(', ')}. Tomorrow’s plan is set.</p>
-      <p className="mt-1 text-sm text-muted">Next up: {next}.</p>
-    </Card>
-  );
-}
-
-// ── Session ───────────────────────────────────────────────────────────────────
-type Outcome = 'planned' | 'grindy' | 'missed' | 'pain';
-
-function outcomeSets(ex: TodayExercise, outcome: Outcome): SetEntry[] {
-  const weight = typeof ex.load === 'number' ? ex.load : 0;
-  const top = ex.scheme.repHigh;
-  const low = ex.scheme.repLow;
-  const base: SetEntry = { weight, reps: top, rir: 2, quality: 'clean', pain: 'none' };
-  const n = Math.max(1, ex.scheme.sets);
-  switch (outcome) {
-    case 'planned':
-      return Array.from({ length: n }, () => ({ ...base }));
-    case 'grindy':
-      return Array.from({ length: n }, () => ({ ...base, quality: 'grindy' as const }));
-    case 'missed':
-      return Array.from({ length: n }, (_, i) =>
-        i === 0 ? { ...base, reps: Math.max(0, low - 1) } : { ...base },
-      );
-    case 'pain':
-      return Array.from({ length: n }, () => ({ ...base, pain: 'pain' as const }));
-  }
-}
-
-function SessionCard({
-  result,
-  data,
-  update,
-  today,
-}: {
-  result: ReturnType<typeof selectToday>;
-  data: ReturnType<typeof useStore>['data'];
-  update: ReturnType<typeof useStore>['update'];
-  today: string;
-}) {
-  const { plan } = result;
-  if (plan.exercises) {
-    return (
-      <StrengthCard
-        exercises={plan.exercises}
-        optionalBlocks={result.optionalBlocks}
-        lifts={data.state.lifts}
-        deload={result.inDeload}
-        sessionType={plan.sessionType}
-        today={today}
-        update={update}
-      />
-    );
-  }
-  if (plan.cardio) {
-    return <CardioCard result={result} update={update} today={today} cardioPhase={data.state.cardioPhase} />;
-  }
-  return null;
-}
-
-function StrengthCard({
-  exercises,
-  optionalBlocks,
-  lifts,
-  deload,
-  sessionType,
-  today,
-  update,
-}: {
-  exercises: TodayExercise[];
-  optionalBlocks: string[];
-  lifts: ReturnType<typeof useStore>['data']['state']['lifts'];
-  deload: boolean;
-  sessionType: WorkoutLog['sessionType'];
-  today: string;
-  update: ReturnType<typeof useStore>['update'];
-}) {
-  const [outcomes, setOutcomes] = useState<Record<string, Outcome>>({});
-
-  const complete = () => {
-    const workout: WorkoutLog = {
-      date: today,
-      sessionType,
-      exercises: exercises.map((ex) => ({ name: ex.name, sets: outcomeSets(ex, outcomes[ex.name] ?? 'planned') })),
-    };
-    // On completion the parent re-renders into the "Done for today" card.
-    update((d) => logWorkout(d, workout));
-  };
-
-  return (
-    <Card>
-      <CardTitle>{deload ? 'Deload — easy, leave fresh' : 'Strength'}</CardTitle>
-      <div className="space-y-3">
-        {exercises.map((ex) => {
-          const outcome = outcomes[ex.name] ?? 'planned';
-          const lift = lifts[ex.name];
-          const rec = lift ? nextLoad(ex.name, lift, outcomeSets(ex, outcome)) : null;
-          return (
-            <div key={ex.name} className="rounded-xl border border-line p-3">
-              <div className="flex flex-wrap items-baseline justify-between gap-x-3">
-                <span className="font-medium text-ink">{ex.name}</span>
-                <span className="text-sm text-muted">
-                  {ex.target} · {typeof ex.load === 'number' ? `${ex.load} lb` : ex.load}
-                </span>
-              </div>
-              {!deload && (
-                <div className="mt-2">
-                  <Segmented
-                    value={outcome}
-                    onChange={(v) => setOutcomes((o) => ({ ...o, [ex.name]: v as Outcome }))}
-                    tone={(v) => (v === 'planned' ? 'go' : v === 'pain' ? 'stop' : 'hold')}
-                    options={[
-                      { value: 'planned', label: 'As planned' },
-                      { value: 'grindy', label: 'Grindy' },
-                      { value: 'missed', label: 'Missed' },
-                      { value: 'pain', label: 'Pain' },
-                    ]}
-                  />
-                  {rec && <p className="mt-1.5 text-xs text-muted">Next time: {rec.note}</p>}
-                </div>
-              )}
-            </div>
-          );
-        })}
-
-        {optionalBlocks.map((name) => (
-          <div key={name} className="rounded-xl border border-dashed border-line p-3">
-            <div className="font-medium text-ink">{name}</div>
-            <p className="mt-0.5 text-xs text-muted">{optionalBlockPrescription[name]}</p>
-          </div>
-        ))}
-      </div>
-
-      <div className="mt-3">
-        <Button onClick={complete}>{deload ? 'Mark deload session done' : 'Complete session'}</Button>
-      </div>
-    </Card>
-  );
-}
-
-function CardioCard({
-  result,
-  update,
-  today,
-  cardioPhase,
-}: {
-  result: ReturnType<typeof selectToday>;
-  update: ReturnType<typeof useStore>['update'];
-  today: string;
-  cardioPhase: 1 | 2 | 3;
-}) {
-  const cardio = result.plan.cardio!;
-  const converted = result.plan.sessionType === 'Intervals' && cardio.type !== 'Intervals';
-
-  return (
-    <Card>
-      <CardTitle>
-        {cardio.type === 'Zone2' ? 'Zone 2' : cardio.type === 'Intervals' ? 'Intervals' : 'Recovery'}
-      </CardTitle>
-      {converted && <p className="mb-2 text-sm text-hold">Intervals cut today — do Zone 2 instead.</p>}
-
-      {cardio.type === 'Zone2' && (
-        <p className="text-sm text-ink">
-          {cardio.modalityDefault} · target {cardio.plannedDurationMinutes} min.{' '}
-          <span className="text-muted">
-            Phase {cardioPhase}: {zone2WeeklyText(cardioPhase)}.
-          </span>
-        </p>
-      )}
-      {cardio.type === 'Intervals' && (
-        <p className="text-sm text-ink">
-          {cardio.modalityDefault} · {cardio.rounds} × ({cardio.workMinutes} hard / {cardio.recoveryMinutes} easy).
-        </p>
-      )}
-      {cardio.type === 'Recovery' && (
-        <p className="text-sm text-ink">
-          {cardio.modalityDefault} · ~{cardio.plannedDurationMinutes} min, easy.
-        </p>
-      )}
-
-      <div className="mt-3">
-        <Button onClick={() => update((d) => logCardioSession(d, today, result.plan.sessionType))}>
-          Log session
-        </Button>
-      </div>
-    </Card>
-  );
-}
-
-// ── Diet ──────────────────────────────────────────────────────────────────────
-function DietCard({ log, patch }: { log: DailyLog; patch: (p: Partial<DailyLog>) => void }) {
-  const color = dietScore(log.diet);
-  const tone =
-    color === 'green'
-      ? 'bg-go-soft text-go'
-      : color === 'yellow'
-        ? 'bg-hold-soft text-hold'
-        : 'bg-stop-soft text-stop';
-  const toggle = (k: DietKey) => patch({ diet: { ...log.diet, [k]: !log.diet[k] } });
-  return (
-    <Card>
-      <CardTitle>Diet</CardTitle>
-      <div className="grid grid-cols-1 gap-1.5">
-        {DIET_KEYS.map((k) => (
-          <label key={k} className="flex items-center gap-2.5 rounded-lg px-1 py-1 text-sm">
-            <input
-              type="checkbox"
-              checked={log.diet[k]}
-              onChange={() => toggle(k)}
-              className="h-4 w-4 accent-[var(--color-accent)]"
-            />
-            <span className={log.diet[k] ? 'text-ink' : 'text-muted'}>{dietLabels[k]}</span>
-          </label>
-        ))}
-      </div>
-      <div className={`mt-3 rounded-xl px-3 py-2 text-sm font-medium ${tone}`}>{dietCopy[color]}</div>
-    </Card>
-  );
-}
-
-// ── Steps + Sleep mini-cards ──────────────────────────────────────────────────
-function weeklyStepAverage(logs: DailyLog[], today: string): number | null {
-  const start = new Date(today);
-  start.setDate(start.getDate() - 6);
-  const startISO = start.toISOString().slice(0, 10);
-  const recent = logs.filter((l) => l.date >= startISO && l.date <= today && l.steps != null);
-  if (recent.length === 0) return null;
-  return Math.round(recent.reduce((s, l) => s + (l.steps ?? 0), 0) / recent.length);
-}
-
-function StepsCard({
-  log,
-  patch,
-  stepBaseline,
-  weekAvg,
-}: {
-  log: DailyLog;
-  patch: (p: Partial<DailyLog>) => void;
-  stepBaseline: number;
-  weekAvg: number | null;
-}) {
-  return (
-    <Card>
-      <CardTitle>Steps</CardTitle>
-      <input
-        type="number"
-        inputMode="numeric"
-        value={log.steps ?? ''}
-        placeholder="today"
-        onChange={(e) => patch({ steps: e.target.value === '' ? undefined : Number(e.target.value) })}
-        className="w-full min-w-0 rounded-lg border border-line bg-paper px-2 py-1.5 text-lg font-semibold text-ink"
-      />
-      <p className="mt-1 text-xs text-muted">
-        7-day avg {weekAvg != null ? weekAvg.toLocaleString() : '—'} · baseline{' '}
-        {stepBaseline.toLocaleString()}
-      </p>
-    </Card>
-  );
-}
-
-function SleepCard({ log, patch }: { log: DailyLog; patch: (p: Partial<DailyLog>) => void }) {
-  return (
-    <Card>
-      <CardTitle>Sleep</CardTitle>
-      <input
-        type="number"
-        inputMode="decimal"
-        step="0.5"
-        value={log.sleepHours ?? ''}
-        placeholder="hours"
-        onChange={(e) => patch({ sleepHours: e.target.value === '' ? undefined : Number(e.target.value) })}
-        className="w-full min-w-0 rounded-lg border border-line bg-paper px-2 py-1.5 text-lg font-semibold text-ink"
-      />
-      <p className="mt-1 text-xs text-muted">Quality set above.</p>
     </Card>
   );
 }

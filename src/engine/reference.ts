@@ -155,3 +155,65 @@ export const medicalReminders = [
 
 export const sorenessReminder =
   'New diffuse muscle soreness while starting a statin is worth noting for your doctor — log it for your next visit.';
+
+// ── Eat tab: the fixed menu (theme nights, §Diet) ────────────────────────────
+// Deterministic by weekday. Lunch = the prior day's dinner leftovers.
+export const defaultBreakfast = 'Oats · Greek yogurt · berries · flax · walnuts';
+export const snackSuggestion = 'Greek yogurt + berries · apple + almonds · or hummus + veg';
+export const dessertSuggestion = 'Greek yogurt + berries + 10–15 g dark chocolate';
+
+export const themeDinners: Record<string, string> = {
+  Monday: 'Salmon · roasted veg · white beans · quinoa',
+  Tuesday: 'Tacos · corn tortillas · beans · cabbage · avocado',
+  Wednesday: 'Stir-fry · chicken/tofu · veg · brown rice · edamame',
+  Thursday: 'Pasta · whole-grain · lentil/turkey marinara · big salad',
+  Friday: 'Burrito bowl · beans · brown rice · fajita veg · avocado',
+  Saturday: 'Burger · salmon/turkey/bean · whole-grain bun · salad',
+  Sunday: 'Curry · lentil/chickpea/chicken · veg · brown rice',
+};
+
+export const mealLabels: Record<string, string> = {
+  breakfast: 'Breakfast',
+  lunch: 'Lunch (leftovers)',
+  dinner: 'Dinner',
+  snack: 'Snack',
+  dessert: 'Dessert',
+};
+
+export const dietRatingCopy: Record<'good' | 'okay' | 'off', string> = {
+  good: 'Dialed. Repeat tomorrow.',
+  okay: 'Good enough.',
+  off: 'Reset with breakfast + the dinner theme.',
+};
+
+// ── Habits tab: supplements + lifestyle ──────────────────────────────────────
+// Each entry: [label, when]. "when" groups them in the UI (the doc's AM/PM stacks).
+export const supplementMeta: Record<string, { label: string; when: string }> = {
+  statin: { label: 'Statin', when: 'with dinner' },
+  creatineAM: { label: 'Creatine 5 g', when: 'morning' },
+  creatinePM: { label: 'Creatine 5 g', when: 'daytime' },
+  vitaminD: { label: 'Vitamin D3', when: 'morning' },
+  plantSterols: { label: 'Plant sterols 2 g', when: 'morning' },
+  magnesium: { label: 'Magnesium', when: 'evening' },
+};
+
+export const lifestyleMeta: Record<string, string> = {
+  morningLight: 'Morning light (10–20 min)',
+  caffeineCutoff: 'Caffeine cutoff (~2pm)',
+  noAlcoholNearBed: 'No alcohol near bed',
+  stressWindDown: 'Stress wind-down (~10 min)',
+  dental: 'Dental (brush 2× · floss)',
+};
+
+// ── Measure tab: labs the doc wants ordered (reminder list, never interpreted) ─
+export const labsToOrder = [
+  'LDL / ApoB (follow-up 8–12 wk)',
+  'Lp(a) — once',
+  'Baseline CK',
+  'Ferritin / iron',
+  'Vitamin B12',
+  'Folate',
+  'tTG-IgA (while eating gluten)',
+  'Kidney / creatinine (before creatine loading)',
+  'Thyroid TSH + free T4 (6–12 mo)',
+];

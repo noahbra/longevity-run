@@ -6,8 +6,11 @@ import {
   sleepProtocol,
   strengthTemplates,
   supplements,
+  themeDinners,
 } from '../engine/reference';
 import { Card, CardTitle, ScreenTitle } from '../components/ui';
+
+const THEME_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
 const STRENGTH_KEYS = ['StrengthA', 'StrengthB', 'StrengthC'] as const;
 const STRENGTH_TITLES: Record<(typeof STRENGTH_KEYS)[number], string> = {
@@ -67,6 +70,19 @@ export default function Plan() {
           </ul>
           <p className="mt-2 text-xs text-muted">{cardioRamp.note}</p>
         </div>
+      </Card>
+
+      <Card>
+        <CardTitle>Theme nights</CardTitle>
+        <ul className="space-y-1.5 text-sm">
+          {THEME_DAYS.map((d) => (
+            <li key={d}>
+              <span className="font-semibold text-ink">{d.slice(0, 3)}</span>{' '}
+              <span className="text-muted">{themeDinners[d]}</span>
+            </li>
+          ))}
+        </ul>
+        <p className="mt-2 text-xs text-muted">Lunch = the prior day's dinner leftovers.</p>
       </Card>
 
       <ListCard title="Meal framework" items={mealFramework} />

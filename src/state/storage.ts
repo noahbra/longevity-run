@@ -5,7 +5,9 @@
 import type { AppData } from '../types';
 import { APP_DATA_VERSION, seedAppData } from './seed';
 
-const KEY = 'run.appData.v1';
+// Bumped v1 → v2 when the seed dropped its starting deload; invalidates the
+// old persisted deload state so clients reseed into a normal training week.
+const KEY = 'run.appData.v2';
 
 function isAppData(x: unknown): x is AppData {
   if (!x || typeof x !== 'object') return false;

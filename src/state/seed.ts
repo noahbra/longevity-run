@@ -1,7 +1,7 @@
 // ── Seed data (§6) ───────────────────────────────────────────────────────────
-// Boot with the user's real numbers, IN A DELOAD. The stored lift weights are
-// the post-deload WORKING loads to resume at; the engine derives the ~60%
-// deload prescription while inDeload === true.
+// Boot with the user's real numbers at their WORKING loads, training normally
+// (no starting deload). Auto-deload still triggers later from the §3.3 rules
+// (session backstop, stalled mains, recovery red streak).
 
 import type { AppData, LiftState, UserState } from '../types';
 
@@ -55,12 +55,12 @@ function buildLifts(): Record<string, LiftState> {
   return lifts;
 }
 
-export function seedState(today: string): UserState {
+export function seedState(_today: string): UserState {
   return {
     schedule: ['StrengthA', 'Zone2', 'StrengthB', 'Intervals', 'Recovery', 'StrengthC', 'Zone2'],
     nextIndex: 0,
-    inDeload: true,
-    deloadStartDate: today,
+    inDeload: false,
+    deloadStartDate: null,
     strengthSessionsSinceDeload: 0,
     cardioPhase: 1,
     lifts: buildLifts(),

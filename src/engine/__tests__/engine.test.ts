@@ -163,14 +163,19 @@ describe('deload (§3.3)', () => {
   });
 
   it('exits a deload only after 7 calendar days', () => {
-    const s = seedState('2026-06-12');
+    const s: UserState = { ...seedState('2026-06-12'), inDeload: true, deloadStartDate: '2026-06-12' };
     expect(maybeExitDeload(s, '2026-06-18').inDeload).toBe(true); // 6 days
     expect(maybeExitDeload(s, '2026-06-19').inDeload).toBe(false); // 7 days
   });
 
-  it('reconcileDeload keeps the seeded deload until it expires', () => {
-    const s = seedState('2026-06-19'); // seeded today
+  it('reconcileDeload keeps an active deload until it expires', () => {
+    const s: UserState = { ...seedState('2026-06-19'), inDeload: true, deloadStartDate: '2026-06-19' };
     expect(reconcileDeload(s, '2026-06-19').inDeload).toBe(true);
+  });
+
+  it('a fresh seed reconciles to a normal week (no auto-deload at boot)', () => {
+    const s = seedState('2026-06-19');
+    expect(reconcileDeload(s, '2026-06-19').inDeload).toBe(false);
   });
 });
 
@@ -261,13 +266,13 @@ describe('diet score (§3.5)', () => {
 
 // ── §3.1 selectToday ──────────────────────────────────────────────────────────
 describe('selectToday (§3.1)', () => {
-  it('first prescription is the deload week from seed (§6, §10)', () => {
+  it('first prescription is a normal StrengthA week at working load from seed (§6, §10)', () => {
     const s = seedState('2026-06-19');
     const r = selectToday(s, goodRecovery, '2026-06-19');
-    expect(r.inDeload).toBe(true);
+    expect(r.inDeload).toBe(false);
     expect(r.plan.sessionType).toBe('StrengthA');
     const squat = r.plan.exercises?.find((e) => e.name === 'Back squat');
-    expect(squat?.load).toBe(110); // ~60% of 180
+    expect(squat?.load).toBe(180); // full working load, not the ~60% deload
   });
 
   function liveStrengthState(): UserState {

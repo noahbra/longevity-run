@@ -2,7 +2,19 @@
 // Pure AppData → AppData transforms that compose the engine. The store calls
 // these via update(); components never touch the engine's state mechanics.
 
-import type { AppData, AppSettings, DailyLog, DietKey, LiftState, SessionType, WorkoutLog } from '../types';
+import type {
+  AppData,
+  AppSettings,
+  DailyLog,
+  DietKey,
+  LabResult,
+  LifestyleKey,
+  LiftState,
+  MealKey,
+  SessionType,
+  SupplementKey,
+  WorkoutLog,
+} from '../types';
 import {
   applyCardioSession,
   applyWorkout,
@@ -22,8 +34,48 @@ export const DIET_KEYS: DietKey[] = [
   'noProcessedMeat',
 ];
 
+export const MEAL_KEYS: MealKey[] = ['breakfast', 'lunch', 'dinner', 'snack', 'dessert'];
+
+export const SUPPLEMENT_KEYS: SupplementKey[] = [
+  'statin',
+  'creatineAM',
+  'creatinePM',
+  'vitaminD',
+  'plantSterols',
+  'magnesium',
+];
+
+export const LIFESTYLE_KEYS: LifestyleKey[] = [
+  'morningLight',
+  'caffeineCutoff',
+  'noAlcoholNearBed',
+  'stressWindDown',
+  'dental',
+];
+
 export function emptyDiet(): Record<DietKey, boolean> {
   return Object.fromEntries(DIET_KEYS.map((k) => [k, false])) as Record<DietKey, boolean>;
+}
+
+// Derive the 9-key pattern record from the friendly meal checkoffs + levers, so
+// the Eat tab stays "tick the menu" while the Week score keeps working. The
+// theme-night menu is engineered to hit the pattern, so a planned meal implies
+// its nutrients; off-plan/skipped does not.
+export function deriveDiet(log: DailyLog): Record<DietKey, boolean> {
+  const meals = log.meals ?? {};
+  const planned = (k: MealKey) => meals[k] === 'planned';
+  const notOffplan = (k: MealKey) => meals[k] !== 'offplan';
+  return {
+    ldlBreakfast: planned('breakfast'),
+    psyllium: !!log.diet?.psyllium, // lever toggle, set directly on the Eat tab
+    legumes: planned('dinner') || planned('lunch'),
+    nuts: !!log.diet?.nuts, // lever toggle
+    proteinTarget: planned('breakfast') && planned('dinner'),
+    lowSaturatedFat: notOffplan('dinner') && notOffplan('lunch'),
+    vegetables: planned('dinner') || planned('lunch'),
+    dessertControlled: meals.dessert !== 'offplan',
+    noProcessedMeat: notOffplan('dinner'),
+  };
 }
 
 export function defaultDailyLog(date: string): DailyLog {
@@ -93,4 +145,22 @@ export function updateScheduleSlot(data: AppData, index: number, sessionType: Se
   const schedule = [...data.state.schedule];
   schedule[index] = sessionType;
   return { ...data, state: { ...data.state, schedule } };
+}
+
+export function addLab(data: AppData, lab: LabResult): AppData {
+  return { ...data, labs: [...(data.labs ?? []), lab] };
+}
+
+export function removeLab(data: AppData, index: number): AppData {
+  return { ...data, labs: (data.labs ?? []).filter((_, i) => i !== index) };
+}
+
+// A BP block is a 7-day campaign of home readings (anchor + day-1 discard).
+// Mirrors the deload block: store the start, derive everything else.
+export function startBPBlock(data: AppData, date: string): AppData {
+  return { ...data, bpBlockStart: date };
+}
+
+export function endBPBlock(data: AppData): AppData {
+  return { ...data, bpBlockStart: null };
 }

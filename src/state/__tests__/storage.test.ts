@@ -21,17 +21,17 @@ describe('storage — JSON export/import round-trip (§10)', () => {
 
   it('loadAppData seeds when storage is empty, then persists', () => {
     const a = loadAppData('2026-06-19');
-    expect(a.state.inDeload).toBe(true);
+    expect(a.state.inDeload).toBe(false); // seed now boots into a normal training week
     const b = loadAppData('2026-06-19');
     expect(b).toEqual(a); // second load reads what the first saved
   });
 
-  it('reset returns a fresh seeded deload', () => {
+  it('reset returns a fresh seed (normal training week, no deload)', () => {
     const a = loadAppData('2026-06-19');
-    a.state.inDeload = false;
+    a.state.inDeload = true; // dirty it
     saveAppData(a);
     const fresh = resetAppData('2026-06-19');
-    expect(fresh.state.inDeload).toBe(true);
+    expect(fresh.state.inDeload).toBe(false);
   });
 
   it('parseImport rejects malformed input', () => {

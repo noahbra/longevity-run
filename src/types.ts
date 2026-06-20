@@ -66,6 +66,40 @@ export type DietKey =
   | 'dessertControlled'
   | 'noProcessedMeat';
 
+// ── Eat tab: menu checkoffs + subjective score ───────────────────────────────
+export type MealKey = 'breakfast' | 'lunch' | 'dinner' | 'snack' | 'dessert';
+export type MealStatus = 'planned' | 'offplan' | 'skipped';
+export type DietRating = 'good' | 'okay' | 'off';
+
+// ── Habits tab: daily adherence ──────────────────────────────────────────────
+export type SupplementKey =
+  | 'statin' // nightly statin with dinner — the plan's single most important daily item
+  | 'creatineAM'
+  | 'creatinePM'
+  | 'vitaminD'
+  | 'plantSterols'
+  | 'magnesium';
+
+export type LifestyleKey =
+  | 'morningLight'
+  | 'caffeineCutoff'
+  | 'noAlcoholNearBed'
+  | 'stressWindDown'
+  | 'dental';
+
+// ── Measure tab: blood pressure + labs ───────────────────────────────────────
+export interface BPReading {
+  slot: 'am1' | 'am2' | 'pm1' | 'pm2';
+  systolic: number;
+  diastolic: number;
+}
+
+export interface LabResult {
+  date: string;
+  name: string;
+  value?: string; // free-form (e.g. "139 mg/dL"); the app never interprets it
+}
+
 export interface DailyLog {
   date: string;
   steps?: number;
@@ -76,13 +110,23 @@ export interface DailyLog {
   energy?: Quality;
   // INFORMATIONAL ONLY — never affects the directive (§7).
   diffuseSoreness: 'normal' | 'up';
-  diet: Record<DietKey, boolean>;
+  diet: Record<DietKey, boolean>; // pattern record — derived from meals + levers (Eat tab), feeds the Week score
   alcoholNearBed?: boolean;
   caffeineAfterCutoff?: boolean;
   // Optional body metrics surfaced in the Week dashboard / Log.
   bodyweight?: number;
   waist?: number;
   note?: string;
+  // ── Eat tab ──
+  meals?: Partial<Record<MealKey, MealStatus>>;
+  dietRating?: DietRating; // subjective headline score
+  alcoholDrinks?: number; // weekly lever, counted per day
+  // ── Habits tab ──
+  supplements?: Partial<Record<SupplementKey, boolean>>;
+  lifestyle?: Partial<Record<LifestyleKey, boolean>>;
+  sauna?: boolean; // weekly habit, 2–4×/wk target
+  // ── Measure tab ──
+  bp?: BPReading[]; // up to 4/day during a 7-day block (am1, am2, pm1, pm2)
 }
 
 // Returned by the governor resolver (§4.1) and selectToday (§3.1)
@@ -140,4 +184,6 @@ export interface AppData {
   workouts: WorkoutLog[];
   dailyLogs: DailyLog[];
   settings: AppSettings;
+  labs?: LabResult[]; // recorded lab values; periodic, not daily
+  bpBlockStart?: string | null; // ISO start of the current 7-day home BP block
 }
