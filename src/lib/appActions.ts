@@ -147,6 +147,23 @@ export function updateScheduleSlot(data: AppData, index: number, sessionType: Se
   return { ...data, state: { ...data.state, schedule } };
 }
 
+// Backfill a past session into history ONLY — does not touch progression /
+// deload state (those must follow the real-time sequence). Dedups by date+type.
+export function recordPastSession(data: AppData, date: string, sessionType: SessionType): AppData {
+  const workouts = [
+    ...data.workouts.filter((w) => !(w.date === date && w.sessionType === sessionType)),
+    { date, sessionType, exercises: [] },
+  ];
+  return { ...data, workouts };
+}
+
+export function removePastSession(data: AppData, date: string, sessionType: SessionType): AppData {
+  return {
+    ...data,
+    workouts: data.workouts.filter((w) => !(w.date === date && w.sessionType === sessionType)),
+  };
+}
+
 export function addLab(data: AppData, lab: LabResult): AppData {
   return { ...data, labs: [...(data.labs ?? []), lab] };
 }

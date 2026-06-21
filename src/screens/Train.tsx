@@ -9,8 +9,14 @@ import {
 } from '../engine';
 import { directiveLine, optionalBlockPrescription, SESSION_LABELS } from '../engine/reference';
 import type { DailyLog, RecoveryInputs, SetEntry, TodayExercise, WorkoutLog } from '../types';
-import { defaultDailyLog, logCardioSession, logWorkout } from '../lib/appActions';
-import { Button, Card, CardTitle, ScreenTitle, Segmented } from '../components/ui';
+import {
+  defaultDailyLog,
+  logCardioSession,
+  logWorkout,
+  recordPastSession,
+  removePastSession,
+} from '../lib/appActions';
+import { Button, Card, CardTitle, DateNav, ScreenTitle, Segmented } from '../components/ui';
 
 function recoveryFromLog(log: DailyLog): RecoveryInputs {
   return {
@@ -24,7 +30,7 @@ function recoveryFromLog(log: DailyLog): RecoveryInputs {
 }
 
 export default function Train() {
-  const { data, today, update } = useStore();
+  const { data, today, selectedDate, setSelectedDate, update } = useStore();
   const log = useMemo(
     () => data.dailyLogs.find((l) => l.date === today) ?? defaultDailyLog(today),
     [data.dailyLogs, today],
@@ -38,6 +44,7 @@ export default function Train() {
     [stateForToday, log, today],
   );
 
+  const isToday = selectedDate === today;
   const todaysWorkouts = data.workouts.filter((w) => w.date === today);
   const loggedToday = todaysWorkouts.length > 0;
   const badge = loggedToday ? 'Done today' : result.inDeload ? 'Deload' : SESSION_LABELS[result.plan.sessionType];
@@ -45,8 +52,13 @@ export default function Train() {
 
   return (
     <div className="space-y-4">
-      <ScreenTitle title="Train" subtitle="Today's session" />
+      <ScreenTitle title="Train" subtitle={isToday ? "Today's session" : 'Backfill a past session'} />
+      <DateNav date={selectedDate} today={today} onChange={setSelectedDate} />
 
+      {!isToday && <TrainBackfill data={data} date={selectedDate} update={update} />}
+
+      {isToday && (
+        <>
       <div className="flex items-center gap-2">
         <span className="rounded-full bg-accent px-3 py-1 text-sm font-medium text-white">{badge}</span>
         {modified && (
@@ -95,7 +107,77 @@ export default function Train() {
           </p>
         )}
       </Card>
+        </>
+      )}
     </div>
+  );
+}
+
+// ── Record-only backfill (past days) ──────────────────────────────────────────
+// Logs that a session happened for history/Week counts WITHOUT advancing the
+// progression/deload engine — that has to follow the real-time sequence.
+const BACKFILL_SESSIONS: WorkoutLog['sessionType'][] = [
+  'StrengthA',
+  'StrengthB',
+  'StrengthC',
+  'Zone2',
+  'Intervals',
+  'Recovery',
+];
+
+function TrainBackfill({
+  data,
+  date,
+  update,
+}: {
+  data: ReturnType<typeof useStore>['data'];
+  date: string;
+  update: ReturnType<typeof useStore>['update'];
+}) {
+  const logged = data.workouts.filter((w) => w.date === date);
+  return (
+    <>
+      <p className="rounded-xl border border-accent/30 bg-accent/5 p-3 text-sm text-ink">
+        Backfilling a past day — records the session for your history. Progression and deloads stay
+        anchored to the real sequence, so this won't shift your loads.
+      </p>
+      <Card>
+        <CardTitle>What did you do?</CardTitle>
+        {logged.length > 0 && (
+          <ul className="mb-3 space-y-1">
+            {logged.map((w) => (
+              <li key={w.sessionType} className="flex items-center justify-between text-sm">
+                <span className="text-ink">{SESSION_LABELS[w.sessionType]}</span>
+                <button
+                  onClick={() => update((d) => removePastSession(d, date, w.sessionType))}
+                  className="text-xs text-muted hover:text-stop"
+                >
+                  remove
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        <div className="grid grid-cols-2 gap-2">
+          {BACKFILL_SESSIONS.map((s) => {
+            const already = logged.some((w) => w.sessionType === s);
+            return (
+              <button
+                key={s}
+                disabled={already}
+                onClick={() => update((d) => recordPastSession(d, date, s))}
+                className={`rounded-xl border p-2 text-sm font-medium ${
+                  already ? 'border-go/40 bg-go-soft text-go' : 'border-line bg-paper text-ink hover:border-accent'
+                }`}
+              >
+                {already ? '✓ ' : ''}
+                {SESSION_LABELS[s]}
+              </button>
+            );
+          })}
+        </div>
+      </Card>
+    </>
   );
 }
 
